@@ -172,12 +172,42 @@
         #clear-button { background-color: #ff9500; }
         #settings-button { background-color: #8e8e93; }
 
-        /* Modal pour les paramètres */
-        #settings-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background-color: var(--tg-theme-secondary-bg-color); padding: 20px; border-radius: 12px; width: 80%; max-width: 400px; }
-        .modal-content h2 { margin-top: 0; }
+        /* --- STYLES POUR LES MODALS --- */
+        #settings-modal, .modal-backdrop {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: var(--tg-theme-secondary-bg-color);
+            padding: 20px;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .modal-content h2 { margin-top: 0; text-align: left;}
+        .modal-content p { margin: 0 0 20px 0; }
         .modal-content input { width: calc(100% - 20px); padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; }
-        .modal-content button { width: 100%; padding: 10px; border-radius: 8px; border: none; background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
+        .modal-content button { width: 100%; padding: 10px; border-radius: 8px; border: none; }
+        
+        .modal-buttons { display: flex; gap: 10px; margin-top: 10px; }
+        .modal-buttons button { flex-grow: 1; }
+        #custom-confirm-ok-button, #save-settings-button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+        #custom-alert-close-button {
+             background-color: var(--tg-theme-button-color);
+             color: var(--tg-theme-button-text-color);
+        }
 
     </style>
 </head>
@@ -197,20 +227,14 @@
             <input type="number" id="quantity-input" placeholder="Qté" min="1">
             <button id="add-item-button" style="display: none;">Ajouter</button>
         </div>
-
         <div id="inventory-table-container">
             <table>
                 <thead>
-                    <tr>
-                        <th>Code-Barres</th>
-                        <th>Qté</th>
-                        <th></th>
-                    </tr>
+                    <tr><th>Code-Barres</th><th>Qté</th><th></th></tr>
                 </thead>
                 <tbody id="inventory-tbody"></tbody>
             </table>
         </div>
-
         <div id="action-buttons">
             <button id="settings-button">⚙️ Paramètres</button>
             <button id="clear-button">Vider</button>
@@ -218,14 +242,32 @@
         </div>
     </div>
 
+    <!-- Modals -->
     <div id="settings-modal">
         <div class="modal-content">
             <h2>Paramètres</h2>
-            <label for="operator-name">Nom de l'opérateur :</label>
+            <label for="operator-name" style="text-align: left; display: block;">Nom de l'opérateur :</label>
             <input type="text" id="operator-name" placeholder="Ex: Jean Dupont">
-            <label for="inventory-zone">Zone de l'inventaire :</label>
+            <label for="inventory-zone" style="text-align: left; display: block;">Zone de l'inventaire :</label>
             <input type="text" id="inventory-zone" placeholder="Ex: Allée C, Rayon 4">
             <button id="save-settings-button">Enregistrer</button>
+        </div>
+    </div>
+
+    <div id="custom-alert-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <p id="custom-alert-message"></p>
+            <button id="custom-alert-close-button">OK</button>
+        </div>
+    </div>
+
+    <div id="custom-confirm-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <p id="custom-confirm-message"></p>
+            <div class="modal-buttons">
+                <button id="custom-confirm-cancel-button">Annuler</button>
+                <button id="custom-confirm-ok-button">Confirmer</button>
+            </div>
         </div>
     </div>
 
@@ -233,13 +275,15 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const tg = window.Telegram.WebApp;
-            tg.expand();
+            try {
+                tg.expand();
+            } catch (e) { console.log(e); }
 
             // --- VARIABLES ---
             let inventoryData = [];
             let operatorName = localStorage.getItem('operatorName') || '';
             let inventoryZone = localStorage.getItem('inventoryZone') || '';
-            let html5QrcodeScanner; // On le déclare ici pour y accéder partout
+            let html5QrcodeScanner;
 
             const scannedBarcodeInput = document.getElementById('scanned-barcode');
             const quantityInput = document.getElementById('quantity-input');
@@ -249,7 +293,39 @@
             const addItemButton = document.getElementById('add-item-button');
             const scannerOverlay = document.getElementById('scanner-overlay');
 
-            // --- GESTION DES PARAMÈTRES (inchangée) ---
+            // --- GESTION DES MODALS PERSONNALISÉES ---
+            const alertModal = document.getElementById('custom-alert-modal');
+            const alertMessage = document.getElementById('custom-alert-message');
+            const alertCloseBtn = document.getElementById('custom-alert-close-button');
+
+            const confirmModal = document.getElementById('custom-confirm-modal');
+            const confirmMessage = document.getElementById('custom-confirm-message');
+            const confirmOkBtn = document.getElementById('custom-confirm-ok-button');
+            const confirmCancelBtn = document.getElementById('custom-confirm-cancel-button');
+            
+            let confirmCallback = null;
+
+            function showCustomAlert(message) {
+                alertMessage.textContent = message;
+                alertModal.style.display = 'flex';
+            }
+            alertCloseBtn.addEventListener('click', () => { alertModal.style.display = 'none'; });
+
+            function showCustomConfirm(message, callback) {
+                confirmCallback = callback;
+                confirmMessage.textContent = message;
+                confirmModal.style.display = 'flex';
+            }
+            confirmOkBtn.addEventListener('click', () => {
+                confirmModal.style.display = 'none';
+                if (confirmCallback) confirmCallback(true);
+            });
+            confirmCancelBtn.addEventListener('click', () => {
+                confirmModal.style.display = 'none';
+                if (confirmCallback) confirmCallback(false);
+            });
+
+            // --- GESTION DES PARAMÈTRES ---
             const settingsModal = document.getElementById('settings-modal');
             const settingsButton = document.getElementById('settings-button');
             const saveSettingsButton = document.getElementById('save-settings-button');
@@ -267,7 +343,7 @@
                 localStorage.setItem('operatorName', operatorName);
                 localStorage.setItem('inventoryZone', inventoryZone);
                 settingsModal.style.display = 'none';
-                tg.HapticFeedback.notificationOccurred('success');
+                try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
             });
 
             // --- FONCTIONS DE L'INTERFACE ---
@@ -301,10 +377,9 @@
                 const quantity = parseInt(quantityInput.value, 10);
 
                 if (!barcode || !quantity || quantity < 1) {
-                    tg.showAlert("Veuillez entrer une quantité valide.");
+                    showCustomAlert("Veuillez entrer une quantité valide.");
                     return;
                 }
-
                 const existingItemIndex = inventoryData.findIndex(item => item.barcode === barcode);
                 if (existingItemIndex > -1) {
                     inventoryData[existingItemIndex].quantity += quantity;
@@ -317,88 +392,78 @@
 
             addItemButton.addEventListener('click', addItem);
             quantityInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    addItem();
-                }
+                if (e.key === 'Enter') addItem();
             });
 
-            // --- ÉVÉNEMENTS (inchangés pour la plupart) ---
+            // --- ÉVÉNEMENTS ---
             inventoryTbody.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete-btn')) {
-                    const index = e.target.dataset.index;
-                    inventoryData.splice(index, 1);
+                    inventoryData.splice(e.target.dataset.index, 1);
                     renderTable();
                 }
             });
-
             inventoryTbody.addEventListener('change', (e) => {
                 if (e.target.classList.contains('quantity-table-input')) {
                     const index = e.target.dataset.index;
                     const newQuantity = parseInt(e.target.value, 10);
-                    if (newQuantity > 0) {
-                        inventoryData[index].quantity = newQuantity;
-                    } else {
-                        // Si la quantité est invalide, on remet l'ancienne
-                        e.target.value = inventoryData[index].quantity;
-                    }
+                    if (newQuantity > 0) inventoryData[index].quantity = newQuantity;
+                    else e.target.value = inventoryData[index].quantity;
                 }
             });
             
             clearButton.addEventListener('click', () => {
-                tg.showConfirm("Voulez-vous vraiment vider tout l'inventaire ?", (confirmed) => {
+                showCustomConfirm("Voulez-vous vraiment vider tout l'inventaire ?", (confirmed) => {
                     if (confirmed) {
                         inventoryData = [];
                         renderTable();
-                        tg.HapticFeedback.notificationOccurred('success');
+                        try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
                     }
                 });
             });
 
             sendButton.addEventListener('click', () => {
-                console.log("Tentative d'envoi des données..."); // Pour le debug dans le navigateur
                 if (inventoryData.length === 0) {
-                    tg.showAlert("L'inventaire est vide !");
+                    showCustomAlert("L'inventaire est vide !");
                     return;
                 }
                 if (!operatorName || !inventoryZone) {
-                    tg.showAlert("Veuillez définir l'opérateur et la zone dans les paramètres.");
+                    showCustomAlert("Veuillez définir l'opérateur et la zone dans les paramètres.");
                     return;
                 }
                 const dataToSend = { operator: operatorName, zone: inventoryZone, items: inventoryData };
-                
-                // Cette ligne ne fonctionnera que dans Telegram
-                tg.sendData(JSON.stringify(dataToSend));
+                try {
+                    tg.sendData(JSON.stringify(dataToSend));
+                } catch(e) {
+                    console.error("Erreur d'envoi des données : ", e);
+                    showCustomAlert("L'envoi a échoué. Assurez-vous d'utiliser l'application dans Telegram.");
+                }
             });
-
 
             // --- NOUVELLE LOGIQUE DU SCANNER ---
             function onScanSuccess(decodedText, decodedResult) {
-                if (html5QrcodeScanner.getState() !== 2) { // Si le scanner n'est pas déjà en pause
-                    html5QrcodeScanner.pause(true); // true pour garder le flux vidéo
-                    
+                if (html5QrcodeScanner.getState() !== 2) { // Si pas déjà en pause
+                    html5QrcodeScanner.pause(true);
                     scannedBarcodeInput.value = decodedText;
                     quantityInput.disabled = false;
-                    quantityInput.focus(); // Met le curseur dans le champ quantité
+                    quantityInput.focus();
                     addItemButton.style.display = 'block';
                     scannerOverlay.classList.add('paused');
-                    
-                    tg.HapticFeedback.notificationOccurred('success');
+                    try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
                 }
             }
 
             html5QrcodeScanner = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 150 }, supportedScanTypes: [0] }; // 0 = Barcodes
+            const config = { fps: 10, qrbox: { width: 250, height: 150 }, supportedScanTypes: [0] };
             
             html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess, (error) => {})
             .catch(err => {
                 console.error("Impossible de démarrer le scanner", err);
-                tg.showAlert("Erreur d'accès à la caméra.");
+                showCustomAlert("Erreur d'accès à la caméra. Assurez-vous que la page est ouverte en HTTPS et que vous avez donné les autorisations.");
             });
             
-            resetScanUI(); // Initialise l'interface
+            resetScanUI();
 
-
-            // --- NOUVELLE LOGIQUE DU DRAG-HANDLE ---
+            // --- LOGIQUE DU DRAG-HANDLE ---
             const mainContent = document.getElementById('main-content');
             const dragHandle = document.getElementById('drag-handle');
             let startY, startHeight;
@@ -406,33 +471,22 @@
             dragHandle.addEventListener('touchstart', (e) => {
                 startY = e.touches[0].clientY;
                 startHeight = mainContent.offsetHeight;
-                mainContent.style.transition = 'none'; // Désactive la transition pendant le drag
+                mainContent.style.transition = 'none';
             });
-
             dragHandle.addEventListener('touchmove', (e) => {
-                const currentY = e.touches[0].clientY;
-                const diffY = startY - currentY;
+                const diffY = startY - e.touches[0].clientY;
                 let newHeight = startHeight + diffY;
-                
-                // Limites pour ne pas sortir de l'écran
                 const minHeight = 150;
                 const maxHeight = window.innerHeight - 50;
                 if (newHeight < minHeight) newHeight = minHeight;
                 if (newHeight > maxHeight) newHeight = maxHeight;
-
                 mainContent.style.height = `${newHeight}px`;
             });
-
             dragHandle.addEventListener('touchend', () => {
                 mainContent.style.transition = 'transform 0.3s ease-out, height 0.3s ease-out';
                 const currentHeight = mainContent.offsetHeight;
-                
-                // "Snap" : si on a monté de plus de la moitié, on va en haut, sinon on revient
-                if (currentHeight > window.innerHeight * 0.5) {
-                    mainContent.style.height = '85vh';
-                } else {
-                    mainContent.style.height = '60vh'; // Position par défaut
-                }
+                if (currentHeight > window.innerHeight * 0.5) mainContent.style.height = '85vh';
+                else mainContent.style.height = '60vh';
             });
         });
     </script>
