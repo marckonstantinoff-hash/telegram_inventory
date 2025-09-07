@@ -104,7 +104,7 @@
             box-sizing: border-box;
             box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
             transform: translateY(0);
-            transition: transform 0.3s ease-out;
+            transition: transform 0.3s ease-out, height 0.3s ease-out;
             z-index: 10;
             touch-action: none; /* Empêche le défilement de la page lors du drag */
         }
@@ -284,6 +284,7 @@
             let operatorName = localStorage.getItem('operatorName') || '';
             let inventoryZone = localStorage.getItem('inventoryZone') || '';
             let html5QrcodeScanner;
+            let isProcessingScan = false; // Verrou pour le scan
 
             const scannedBarcodeInput = document.getElementById('scanned-barcode');
             const quantityInput = document.getElementById('quantity-input');
@@ -370,6 +371,7 @@
                 if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // 2 = PAUSED
                     html5QrcodeScanner.resume();
                 }
+                isProcessingScan = false; // On libère le verrou
             }
 
             function addItem() {
@@ -439,17 +441,22 @@
                 }
             });
 
-            // --- NOUVELLE LOGIQUE DU SCANNER ---
+            // --- LOGIQUE DU SCANNER CORRIGÉE ---
             function onScanSuccess(decodedText, decodedResult) {
-                if (html5QrcodeScanner.getState() !== 2) { // Si pas déjà en pause
-                    html5QrcodeScanner.pause(true);
-                    scannedBarcodeInput.value = decodedText;
-                    quantityInput.disabled = false;
-                    quantityInput.focus();
-                    addItemButton.style.display = 'block';
-                    scannerOverlay.classList.add('paused');
-                    try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+                if (isProcessingScan || !decodedText) {
+                    return;
                 }
+                isProcessingScan = true; // On active le verrou
+
+                html5QrcodeScanner.pause(true);
+                scannedBarcodeInput.value = decodedText;
+                quantityInput.disabled = false;
+                quantityInput.value = "1"; // Quantité par défaut
+                quantityInput.focus();
+                quantityInput.select(); // Sélectionne le texte pour le remplacer facilement
+                addItemButton.style.display = 'block';
+                scannerOverlay.classList.add('paused');
+                try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
             }
 
             html5QrcodeScanner = new Html5Qrcode("reader");
@@ -463,31 +470,56 @@
             
             resetScanUI();
 
-            // --- LOGIQUE DU DRAG-HANDLE ---
+            // --- LOGIQUE DU DRAG-HANDLE CORRIGÉE ---
             const mainContent = document.getElementById('main-content');
             const dragHandle = document.getElementById('drag-handle');
+            let isDragging = false;
             let startY, startHeight;
 
-            dragHandle.addEventListener('touchstart', (e) => {
-                startY = e.touches[0].clientY;
+            function onDragStart(clientY) {
+                isDragging = true;
+                startY = clientY;
                 startHeight = mainContent.offsetHeight;
                 mainContent.style.transition = 'none';
-            });
-            dragHandle.addEventListener('touchmove', (e) => {
-                const diffY = startY - e.touches[0].clientY;
+                dragHandle.style.cursor = 'grabbing';
+            }
+
+            function onDragMove(clientY) {
+                if (!isDragging) return;
+                const diffY = startY - clientY;
                 let newHeight = startHeight + diffY;
+                
                 const minHeight = 150;
                 const maxHeight = window.innerHeight - 50;
                 if (newHeight < minHeight) newHeight = minHeight;
                 if (newHeight > maxHeight) newHeight = maxHeight;
+
                 mainContent.style.height = `${newHeight}px`;
-            });
-            dragHandle.addEventListener('touchend', () => {
+            }
+
+            function onDragEnd() {
+                if (!isDragging) return;
+                isDragging = false;
+                dragHandle.style.cursor = 'grab';
                 mainContent.style.transition = 'transform 0.3s ease-out, height 0.3s ease-out';
                 const currentHeight = mainContent.offsetHeight;
-                if (currentHeight > window.innerHeight * 0.5) mainContent.style.height = '85vh';
-                else mainContent.style.height = '60vh';
-            });
+                
+                if (currentHeight > window.innerHeight * 0.7) {
+                    mainContent.style.height = '85vh';
+                } else {
+                    mainContent.style.height = '60vh';
+                }
+            }
+
+            // Événements pour le tactile
+            dragHandle.addEventListener('touchstart', (e) => { e.preventDefault(); onDragStart(e.touches[0].clientY); }, { passive: false });
+            document.addEventListener('touchmove', (e) => { if(isDragging) onDragMove(e.touches[0].clientY); });
+            document.addEventListener('touchend', onDragEnd);
+
+            // Événements pour la souris
+            dragHandle.addEventListener('mousedown', (e) => { onDragStart(e.clientY); });
+            document.addEventListener('mousemove', (e) => { if(isDragging) onDragMove(e.clientY); });
+            document.addEventListener('mouseup', onDragEnd);
         });
     </script>
 </body>
