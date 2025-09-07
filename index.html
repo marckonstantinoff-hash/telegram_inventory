@@ -16,13 +16,14 @@
             --tg-theme-button-text-color: #ffffff;
             --tg-theme-secondary-bg-color: #f4f4f5;
             --scanner-laser-color: #ff3b30;
+            --success-color: #34c759;
         }
 
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
-            height: 100%;
+            height: 100vh; /* Utilise 100vh pour la hauteur complète */
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--tg-theme-bg-color);
             color: var(--tg-theme-text-color);
@@ -38,7 +39,6 @@
             width: 100%;
             height: 100%;
             background-color: #000; /* Fond noir pendant le chargement */
-            /* z-index a été retiré pour corriger le bug d'affichage */
         }
         
         #reader {
@@ -52,14 +52,19 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 90vw; /* Utilise la largeur de la vue pour s'adapter */
-            max-width: 450px; /* Limite la largeur sur les grands écrans */
-            height: 20vh; /* La hauteur est proportionnelle à la hauteur de l'écran */
+            width: 90vw; 
+            max-width: 450px;
+            height: 20vh;
             max-height: 150px;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6); /* Masque autour (un peu plus sombre) */
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
             border: 2px solid rgba(255, 255, 255, 0.8);
             border-radius: 12px;
-            pointer-events: none; /* Laisse passer les clics */
+            pointer-events: none;
+            transition: border-color 0.3s;
+        }
+
+        #scanner-overlay.paused {
+            border-color: var(--success-color);
         }
 
         #scanner-laser {
@@ -74,13 +79,17 @@
             border-radius: 1px;
         }
 
+        #scanner-overlay.paused #scanner-laser {
+            animation: none;
+            background-color: var(--success-color);
+        }
+
         @keyframes scanning {
             0%, 100% { transform: translateY(-30px); opacity: 0.5; }
             50% { transform: translateY(30px); opacity: 1; }
         }
 
         #main-content {
-            flex-grow: 1;
             display: flex;
             flex-direction: column;
             background-color: var(--tg-theme-secondary-bg-color);
@@ -90,13 +99,14 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 60vh; /* La partie basse occupe 60% de l'écran */
+            height: 60vh;
             padding: 15px;
             box-sizing: border-box;
             box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
             transform: translateY(0);
-            transition: transform 0.3s ease-in-out;
-            z-index: 10; /* Doit être au-dessus de la caméra */
+            transition: transform 0.3s ease-out;
+            z-index: 10;
+            touch-action: none; /* Empêche le défilement de la page lors du drag */
         }
 
         #drag-handle {
@@ -115,7 +125,7 @@
             align-items: center;
         }
         
-        #scan-result-container input {
+        #scan-result-container input, #scan-result-container button {
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -126,13 +136,20 @@
 
         #scanned-barcode {
             flex-grow: 1;
-            border: 2px dashed var(--tg-theme-button-color);
             text-align: center;
         }
 
         #quantity-input {
-            width: 80px;
+            width: 70px;
             text-align: center;
+        }
+
+        #add-item-button {
+            background-color: var(--success-color);
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
         }
         
         #inventory-table-container {
@@ -142,84 +159,22 @@
             border-radius: 8px;
         }
         
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e5e5e5; }
+        th { background-color: var(--tg-theme-bg-color); position: sticky; top: 0; }
+        td input[type="number"] { width: 60px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; background-color: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
+        .delete-btn { background-color: #ff3b30; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold; }
         
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #e5e5e5;
-        }
-
-        th {
-            background-color: var(--tg-theme-bg-color);
-            position: sticky;
-            top: 0;
-        }
-
-        td input[type="number"] {
-            width: 60px;
-            padding: 5px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
-        }
-        
-        .delete-btn {
-            background-color: #ff3b30;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        
-        #action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        #action-buttons button {
-            flex-grow: 1;
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 10px;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            color: var(--tg-theme-button-text-color);
-        }
+        #action-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        #action-buttons button { flex-grow: 1; padding: 12px; font-size: 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; color: var(--tg-theme-button-text-color); }
         
         #send-button { background-color: var(--tg-theme-button-color); }
         #clear-button { background-color: #ff9500; }
         #settings-button { background-color: #8e8e93; }
 
         /* Modal pour les paramètres */
-        #settings-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: var(--tg-theme-secondary-bg-color);
-            padding: 20px;
-            border-radius: 12px;
-            width: 80%;
-            max-width: 400px;
-        }
+        #settings-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background-color: var(--tg-theme-secondary-bg-color); padding: 20px; border-radius: 12px; width: 80%; max-width: 400px; }
         .modal-content h2 { margin-top: 0; }
         .modal-content input { width: calc(100% - 20px); padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; }
         .modal-content button { width: 100%; padding: 10px; border-radius: 8px; border: none; background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
@@ -238,8 +193,9 @@
     <div id="main-content">
         <div id="drag-handle"></div>
         <div id="scan-result-container">
-            <input type="text" id="scanned-barcode" placeholder="Code-barres..." readonly>
-            <input type="number" id="quantity-input" value="1" min="1">
+            <input type="text" id="scanned-barcode" placeholder="En attente de scan..." readonly>
+            <input type="number" id="quantity-input" placeholder="Qté" min="1">
+            <button id="add-item-button" style="display: none;">Ajouter</button>
         </div>
 
         <div id="inventory-table-container">
@@ -251,9 +207,7 @@
                         <th></th>
                     </tr>
                 </thead>
-                <tbody id="inventory-tbody">
-                    <!-- Les lignes seront ajoutées ici par JavaScript -->
-                </tbody>
+                <tbody id="inventory-tbody"></tbody>
             </table>
         </div>
 
@@ -279,20 +233,23 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const tg = window.Telegram.WebApp;
-            tg.expand(); // Ouvre la Web App en grand
+            tg.expand();
 
             // --- VARIABLES ---
             let inventoryData = [];
             let operatorName = localStorage.getItem('operatorName') || '';
             let inventoryZone = localStorage.getItem('inventoryZone') || '';
-            
+            let html5QrcodeScanner; // On le déclare ici pour y accéder partout
+
             const scannedBarcodeInput = document.getElementById('scanned-barcode');
             const quantityInput = document.getElementById('quantity-input');
             const inventoryTbody = document.getElementById('inventory-tbody');
             const sendButton = document.getElementById('send-button');
             const clearButton = document.getElementById('clear-button');
-            
-            // --- GESTION DES PARAMÈTRES ---
+            const addItemButton = document.getElementById('add-item-button');
+            const scannerOverlay = document.getElementById('scanner-overlay');
+
+            // --- GESTION DES PARAMÈTRES (inchangée) ---
             const settingsModal = document.getElementById('settings-modal');
             const settingsButton = document.getElementById('settings-button');
             const saveSettingsButton = document.getElementById('save-settings-button');
@@ -302,9 +259,7 @@
             operatorNameInput.value = operatorName;
             inventoryZoneInput.value = inventoryZone;
 
-            settingsButton.addEventListener('click', () => {
-                settingsModal.style.display = 'flex';
-            });
+            settingsButton.addEventListener('click', () => { settingsModal.style.display = 'flex'; });
             
             saveSettingsButton.addEventListener('click', () => {
                 operatorName = operatorNameInput.value.trim();
@@ -329,23 +284,45 @@
                 });
             }
 
-            function addItem(barcode, quantity) {
-                if (!barcode || !quantity) return;
+            function resetScanUI() {
+                scannedBarcodeInput.value = '';
+                scannedBarcodeInput.placeholder = 'En attente de scan...';
+                quantityInput.value = '';
+                quantityInput.disabled = true;
+                addItemButton.style.display = 'none';
+                scannerOverlay.classList.remove('paused');
+                if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // 2 = PAUSED
+                    html5QrcodeScanner.resume();
+                }
+            }
+
+            function addItem() {
+                const barcode = scannedBarcodeInput.value;
+                const quantity = parseInt(quantityInput.value, 10);
+
+                if (!barcode || !quantity || quantity < 1) {
+                    tg.showAlert("Veuillez entrer une quantité valide.");
+                    return;
+                }
 
                 const existingItemIndex = inventoryData.findIndex(item => item.barcode === barcode);
                 if (existingItemIndex > -1) {
-                    // Si l'article existe déjà, on ajoute la quantité
                     inventoryData[existingItemIndex].quantity += quantity;
                 } else {
-                    // Sinon, on l'ajoute à la liste
                     inventoryData.push({ barcode, quantity });
                 }
                 renderTable();
-                scannedBarcodeInput.value = ''; // On vide le champ après ajout
-                quantityInput.value = 1; // On réinitialise la quantité
+                resetScanUI();
             }
 
-            // --- ÉVÉNEMENTS ---
+            addItemButton.addEventListener('click', addItem);
+            quantityInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    addItem();
+                }
+            });
+
+            // --- ÉVÉNEMENTS (inchangés pour la plupart) ---
             inventoryTbody.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete-btn')) {
                     const index = e.target.dataset.index;
@@ -378,56 +355,85 @@
             });
 
             sendButton.addEventListener('click', () => {
+                console.log("Tentative d'envoi des données..."); // Pour le debug dans le navigateur
                 if (inventoryData.length === 0) {
                     tg.showAlert("L'inventaire est vide !");
                     return;
                 }
-                 if (!operatorName || !inventoryZone) {
+                if (!operatorName || !inventoryZone) {
                     tg.showAlert("Veuillez définir l'opérateur et la zone dans les paramètres.");
                     return;
                 }
-
-                const dataToSend = {
-                    operator: operatorName,
-                    zone: inventoryZone,
-                    items: inventoryData
-                };
-
-                // Envoie les données au bot et ferme la Web App
+                const dataToSend = { operator: operatorName, zone: inventoryZone, items: inventoryData };
+                
+                // Cette ligne ne fonctionnera que dans Telegram
                 tg.sendData(JSON.stringify(dataToSend));
             });
 
 
-            // --- LOGIQUE DU SCANNER ---
+            // --- NOUVELLE LOGIQUE DU SCANNER ---
             function onScanSuccess(decodedText, decodedResult) {
-                scannedBarcodeInput.value = decodedText;
-                tg.HapticFeedback.notificationOccurred('success');
-                addItem(decodedText, parseInt(quantityInput.value, 10));
+                if (html5QrcodeScanner.getState() !== 2) { // Si le scanner n'est pas déjà en pause
+                    html5QrcodeScanner.pause(true); // true pour garder le flux vidéo
+                    
+                    scannedBarcodeInput.value = decodedText;
+                    quantityInput.disabled = false;
+                    quantityInput.focus(); // Met le curseur dans le champ quantité
+                    addItemButton.style.display = 'block';
+                    scannerOverlay.classList.add('paused');
+                    
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
             }
 
-            function onScanFailure(error) {
-                // Pas besoin de logger chaque échec, c'est normal
-            }
-
-            // On configure le scanner pour qu'il utilise toute la largeur de la vue
-            const html5QrcodeScanner = new Html5Qrcode("reader");
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 250, height: 150 }, // Cette boîte est pour la détection, pas pour le visuel
-                aspectRatio: 1.0 // On force un ratio pour essayer de mieux centrer
-            };
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 150 }, supportedScanTypes: [0] }; // 0 = Barcodes
             
-            // Démarrage de la caméra
-            html5QrcodeScanner.start(
-                { facingMode: "environment" }, // Caméra arrière
-                config,
-                onScanSuccess,
-                onScanFailure
-            ).catch(err => {
+            html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess, (error) => {})
+            .catch(err => {
                 console.error("Impossible de démarrer le scanner", err);
-                tg.showAlert("Erreur d'accès à la caméra. Avez-vous donné les autorisations ?");
+                tg.showAlert("Erreur d'accès à la caméra.");
+            });
+            
+            resetScanUI(); // Initialise l'interface
+
+
+            // --- NOUVELLE LOGIQUE DU DRAG-HANDLE ---
+            const mainContent = document.getElementById('main-content');
+            const dragHandle = document.getElementById('drag-handle');
+            let startY, startHeight;
+
+            dragHandle.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].clientY;
+                startHeight = mainContent.offsetHeight;
+                mainContent.style.transition = 'none'; // Désactive la transition pendant le drag
             });
 
+            dragHandle.addEventListener('touchmove', (e) => {
+                const currentY = e.touches[0].clientY;
+                const diffY = startY - currentY;
+                let newHeight = startHeight + diffY;
+                
+                // Limites pour ne pas sortir de l'écran
+                const minHeight = 150;
+                const maxHeight = window.innerHeight - 50;
+                if (newHeight < minHeight) newHeight = minHeight;
+                if (newHeight > maxHeight) newHeight = maxHeight;
+
+                mainContent.style.height = `${newHeight}px`;
+            });
+
+            dragHandle.addEventListener('touchend', () => {
+                mainContent.style.transition = 'transform 0.3s ease-out, height 0.3s ease-out';
+                const currentHeight = mainContent.offsetHeight;
+                
+                // "Snap" : si on a monté de plus de la moitié, on va en haut, sinon on revient
+                if (currentHeight > window.innerHeight * 0.5) {
+                    mainContent.style.height = '85vh';
+                } else {
+                    mainContent.style.height = '60vh'; // Position par défaut
+                }
+            });
         });
     </script>
 </body>
