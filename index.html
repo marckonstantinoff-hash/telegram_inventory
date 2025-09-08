@@ -413,9 +413,9 @@
                 addItemButton.style.display = 'none';
                 scannerOverlay.classList.remove('paused');
                 // La reprise du scan est plus fiable ainsi
-                if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // 2 = PAUSED
+                //if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // 2 = PAUSED
                     html5QrcodeScanner.resume();
-                }
+                //}
                 isProcessingScan = false;
             };
 
