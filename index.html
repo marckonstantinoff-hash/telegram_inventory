@@ -52,6 +52,21 @@
             border: none;
         }
 
+        #scanner-status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            z-index: 5;
+            display: none;
+            transition: opacity 0.3s;
+        }
+
         #scanner-overlay {
             position: absolute;
             top: 50%;
@@ -65,7 +80,6 @@
             pointer-events: none;
         }
 
-        /* NOUVEAU DESIGN DES COINS */
         .scanner-corner {
             position: absolute;
             width: 30px;
@@ -89,7 +103,6 @@
             left: 5%;
             width: 90%;
             height: 3px;
-            /* NOUVEAU DESIGN DU LASER */
             background: linear-gradient(to right, transparent, var(--scanner-laser-color), transparent);
             box-shadow: 0 0 5px var(--scanner-laser-color);
             animation: scanning 2s infinite ease-in-out;
@@ -233,8 +246,8 @@
 
     <div id="camera-container">
         <div id="reader"></div>
+        <div id="scanner-status">Scan en pause</div>
         <div id="scanner-overlay">
-            <!-- NOUVEAUX MARQUEURS DE COINS -->
             <div class="scanner-corner top-left"></div>
             <div class="scanner-corner top-right"></div>
             <div class="scanner-corner bottom-left"></div>
@@ -308,6 +321,7 @@
             const mainContent = document.getElementById('main-content');
             const panelHeader = document.getElementById('panel-header');
             const scannerOverlay = document.getElementById('scanner-overlay');
+            const scannerStatus = document.getElementById('scanner-status');
             const scannedBarcodeInput = document.getElementById('scanned-barcode');
             const quantityInput = document.getElementById('quantity-input');
             const addItemButton = document.getElementById('add-item-button');
@@ -362,16 +376,19 @@
             // --- Scanner Logic ---
             const onScanSuccess = (decodedText, decodedResult) => {
                 if (isProcessingScan) return;
-                isProcessingScan = true;
-                // CORRECTION : On utilise pause() sans argument pour ne pas couper le flux vidéo.
-                html5QrcodeScanner.pause(); 
+                
+                isProcessingScan = true; // On bloque les scans futurs
+                
                 scannedBarcodeInput.value = decodedText;
                 quantityInput.disabled = false;
                 quantityInput.value = "1";
                 quantityInput.focus();
                 quantityInput.select();
                 addItemButton.style.display = 'block';
+                
                 scannerOverlay.classList.add('paused');
+                scannerStatus.style.display = 'block';
+                
                 try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
             };
 
@@ -411,11 +428,11 @@
                 quantityInput.value = '';
                 quantityInput.disabled = true;
                 addItemButton.style.display = 'none';
+                
                 scannerOverlay.classList.remove('paused');
-                // La reprise du scan est plus fiable ainsi
-                //if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // 2 = PAUSED
-                    html5QrcodeScanner.resume();
-                //}
+                scannerStatus.style.display = 'none';
+
+                // On débloque la prise en compte des scans
                 isProcessingScan = false;
             };
 
