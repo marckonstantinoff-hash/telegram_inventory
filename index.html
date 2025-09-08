@@ -104,13 +104,13 @@
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 0 15px 15px 15px; /* Pas de padding en haut */
+            padding: 0 15px 15px 15px;
             box-sizing: border-box;
             box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
             z-index: 10;
             touch-action: none;
             transition: height 0.3s ease-out;
-            height: var(--panel-collapsed-height); /* Démarrage en mode minimisé */
+            height: var(--panel-collapsed-height);
         }
 
         #panel-header {
@@ -118,6 +118,7 @@
             cursor: grab;
             text-align: center;
         }
+        #panel-header:active { cursor: grabbing; }
 
         #drag-handle {
             width: 50px;
@@ -150,14 +151,15 @@
             font-weight: bold;
             border: none;
             cursor: pointer;
+            padding: 10px 15px;
         }
 
         #panel-body {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Important */
-            opacity: 0; /* Caché par défaut */
+            overflow: hidden;
+            opacity: 0;
             transition: opacity 0.2s linear;
         }
 
@@ -186,8 +188,8 @@
         #clear-button { background-color: #ff9500; }
         #settings-button { background-color: #8e8e93; }
 
-        /* Styles pour Modals (inchangés) */
-       #settings-modal, .modal-backdrop {
+        /* Styles pour Modals */
+        .modal-backdrop {
             display: none;
             position: fixed;
             z-index: 1000;
@@ -211,17 +213,8 @@
         .modal-content p { margin: 0 0 20px 0; }
         .modal-content input { width: calc(100% - 20px); padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; }
         .modal-content button { width: 100%; padding: 10px; border-radius: 8px; border: none; }
-        
         .modal-buttons { display: flex; gap: 10px; margin-top: 10px; }
         .modal-buttons button { flex-grow: 1; }
-        #custom-confirm-ok-button, #save-settings-button {
-            background-color: var(--tg-theme-button-color);
-            color: var(--tg-theme-button-text-color);
-        }
-        #custom-alert-close-button {
-             background-color: var(--tg-theme-button-color);
-             color: var(--tg-theme-button-text-color);
-        }
     </style>
 </head>
 <body>
@@ -233,7 +226,7 @@
         </div>
     </div>
 
-    <div id="main-content"> <!-- State: 'expanded' -->
+    <div id="main-content">
         <div id="panel-header">
             <div id="drag-handle"></div>
             <div id="scan-result-container">
@@ -242,7 +235,6 @@
                 <button id="add-item-button" style="display: none;">Ajouter</button>
             </div>
         </div>
-
         <div id="panel-body">
             <div id="inventory-table-container">
                 <table>
@@ -254,19 +246,42 @@
             </div>
             <div id="action-buttons">
                 <button id="settings-button">⚙️ Paramètres</button>
-                <button id="clear-button">🗑️ Vider</button>
-                <button id="send-button">📤 Envoyer</button>
+                <button id="clear-button">Vider</button>
+                <button id="send-button">Envoyer</button>
             </div>
         </div>
     </div>
 
-    <!-- Modals (inchangés) -->
+    <!-- Modals -->
+    <div id="settings-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2>Paramètres</h2>
+            <input type="text" id="operator-name" placeholder="Nom de l'opérateur">
+            <input type="text" id="inventory-zone" placeholder="Zone de l'inventaire">
+            <button id="save-settings-button">Enregistrer</button>
+        </div>
+    </div>
+    <div id="custom-alert-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <p id="custom-alert-message"></p>
+            <button id="custom-alert-close-button">OK</button>
+        </div>
+    </div>
+    <div id="custom-confirm-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <p id="custom-confirm-message"></p>
+            <div class="modal-buttons">
+                <button id="custom-confirm-cancel-button">Annuler</button>
+                <button id="custom-confirm-ok-button">Confirmer</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // ... (Variables et Modals inchangés) ...
             const tg = window.Telegram.WebApp;
-            try { tg.expand(); } catch (e) { console.log(e); }
+            try { tg.expand(); } catch (e) { console.error(e); }
+
             let inventoryData = [];
             let operatorName = localStorage.getItem('operatorName') || '';
             let inventoryZone = localStorage.getItem('inventoryZone') || '';
@@ -280,12 +295,57 @@
             const quantityInput = document.getElementById('quantity-input');
             const addItemButton = document.getElementById('add-item-button');
             const inventoryTbody = document.getElementById('inventory-tbody');
+            const clearButton = document.getElementById('clear-button');
+            const sendButton = document.getElementById('send-button');
+            const settingsButton = document.getElementById('settings-button');
+            
+            // --- Custom Modals Logic ---
+            const alertModal = document.getElementById('custom-alert-modal');
+            const confirmModal = document.getElementById('custom-confirm-modal');
+            const settingsModal = document.getElementById('settings-modal');
+            let confirmCallback = null;
 
-            // --- LOGIQUE DU SCANNER CORRIGÉE ---
-            function onScanSuccess(decodedText, decodedResult) {
+            function showCustomAlert(message) {
+                document.getElementById('custom-alert-message').textContent = message;
+                alertModal.style.display = 'flex';
+            }
+            document.getElementById('custom-alert-close-button').onclick = () => alertModal.style.display = 'none';
+
+            function showCustomConfirm(message, callback) {
+                confirmCallback = callback;
+                document.getElementById('custom-confirm-message').textContent = message;
+                confirmModal.style.display = 'flex';
+            }
+            document.getElementById('custom-confirm-ok-button').onclick = () => {
+                confirmModal.style.display = 'none';
+                if (confirmCallback) confirmCallback(true);
+            };
+            document.getElementById('custom-confirm-cancel-button').onclick = () => {
+                confirmModal.style.display = 'none';
+                if (confirmCallback) confirmCallback(false);
+            };
+            
+            // --- Settings Logic ---
+            const operatorNameInput = document.getElementById('operator-name');
+            const inventoryZoneInput = document.getElementById('inventory-zone');
+            settingsButton.onclick = () => {
+                operatorNameInput.value = operatorName;
+                inventoryZoneInput.value = inventoryZone;
+                settingsModal.style.display = 'flex';
+            };
+            document.getElementById('save-settings-button').onclick = () => {
+                operatorName = operatorNameInput.value.trim();
+                inventoryZone = inventoryZoneInput.value.trim();
+                localStorage.setItem('operatorName', operatorName);
+                localStorage.setItem('inventoryZone', inventoryZone);
+                settingsModal.style.display = 'none';
+                try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+            };
+
+            // --- Scanner Logic ---
+            const onScanSuccess = (decodedText, decodedResult) => {
                 if (isProcessingScan) return;
                 isProcessingScan = true;
-
                 html5QrcodeScanner.pause(true);
                 scannedBarcodeInput.value = decodedText;
                 quantityInput.disabled = false;
@@ -294,56 +354,57 @@
                 quantityInput.select();
                 addItemButton.style.display = 'block';
                 scannerOverlay.classList.add('paused');
-                try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
-            }
-            
-            // On calcule la taille de la zone de scan pour la synchroniser
+                try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+            };
+
             const qrboxFunction = (viewfinderWidth, viewfinderHeight) => {
                 const rect = scannerOverlay.getBoundingClientRect();
-                const width = rect.width;
-                const height = rect.height;
-                // Formule pour centrer la boîte
                 return {
-                    x: (viewfinderWidth - width) / 2,
-                    y: (viewfinderHeight - height) / 2,
-                    width: width,
-                    height: height
+                    x: rect.left,
+                    y: rect.top,
+                    width: rect.width,
+                    height: rect.height
                 };
             };
             
-            html5QrcodeScanner = new Html5Qrcode("reader");
-            const config = { 
-                fps: 10, 
-                qrbox: qrboxFunction,
-                supportedScanTypes: [0] // 0 = Barcodes
-            };
-            
-            html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess, (error) => {})
+            html5QrcodeScanner = new Html5Qrcode("reader", { formatsToSupport: [0] }); // 0 for all barcode formats
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: qrboxFunction }, onScanSuccess)
             .catch(err => {
-                console.error("Impossible de démarrer le scanner", err);
-                // showCustomAlert(...)
+                console.error("Scanner start failed", err);
+                showCustomAlert("Erreur d'accès à la caméra. Vérifiez les autorisations.");
             });
 
-            // --- LOGIQUE D'INTERFACE (Ajout, suppression, envoi...) ---
-            
-            function resetScanUI() {
+            // --- UI & Data Logic ---
+            const renderTable = () => {
+                inventoryTbody.innerHTML = '';
+                inventoryData.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.barcode}</td>
+                        <td><input type="number" class="quantity-table-input" data-index="${index}" value="${item.quantity}" min="1"></td>
+                        <td><button class="delete-btn" data-index="${index}">X</button></td>`;
+                    inventoryTbody.appendChild(row);
+                });
+            };
+
+            const resetScanUI = () => {
                 scannedBarcodeInput.value = '';
                 scannedBarcodeInput.placeholder = 'En attente de scan...';
                 quantityInput.value = '';
                 quantityInput.disabled = true;
                 addItemButton.style.display = 'none';
                 scannerOverlay.classList.remove('paused');
-                if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) {
+                if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // PAUSED
                     html5QrcodeScanner.resume();
                 }
                 isProcessingScan = false;
-            }
+            };
 
-            function addItem() {
+            const addItem = () => {
                 const barcode = scannedBarcodeInput.value;
                 const quantity = parseInt(quantityInput.value, 10);
                 if (!barcode || !quantity || quantity < 1) return;
-                
+
                 const existingItemIndex = inventoryData.findIndex(item => item.barcode === barcode);
                 if (existingItemIndex > -1) {
                     inventoryData[existingItemIndex].quantity += quantity;
@@ -352,33 +413,44 @@
                 }
                 renderTable();
                 resetScanUI();
-                html5QrcodeScanner.pause(false);
-            }
-            
-            function renderTable() {
-                 inventoryTbody.innerHTML = '';
-                 inventoryData.forEach((item, index) => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${item.barcode}</td>
-                        <td><input type="number" class="quantity-table-input" data-index="${index}" value="${item.quantity}" min="1"></td>
-                        <td><button class="delete-btn" data-index="${index}">X</button></td>
-                    `;
-                    inventoryTbody.appendChild(row);
+            };
+
+            addItemButton.onclick = addItem;
+            quantityInput.onkeydown = (e) => { if (e.key === 'Enter') addItem(); };
+
+            inventoryTbody.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-btn')) {
+                    inventoryData.splice(e.target.dataset.index, 1);
+                    renderTable();
+                }
+            });
+            inventoryTbody.addEventListener('change', (e) => {
+                if (e.target.classList.contains('quantity-table-input')) {
+                    const index = e.target.dataset.index;
+                    const newQuantity = parseInt(e.target.value, 10);
+                    if (newQuantity > 0) inventoryData[index].quantity = newQuantity;
+                    else e.target.value = inventoryData[index].quantity;
+                }
+            });
+
+            clearButton.onclick = () => {
+                showCustomConfirm("Vider tout l'inventaire ?", (confirmed) => {
+                    if (confirmed) {
+                        inventoryData = [];
+                        renderTable();
+                    }
                 });
-            }
+            };
+            sendButton.onclick = () => {
+                if (inventoryData.length === 0) return showCustomAlert("L'inventaire est vide.");
+                if (!operatorName || !inventoryZone) return showCustomAlert("Veuillez définir l'opérateur et la zone.");
+                tg.sendData(JSON.stringify({ operator: operatorName, zone: inventoryZone, items: inventoryData }));
+            };
 
-            addItemButton.addEventListener('click', addItem);
-            quantityInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
-            
             resetScanUI();
-            
-            // ... (Autres listeners : clear, send, settings...)
 
-
-            // --- NOUVELLE LOGIQUE DU DRAG PANEL ---
-            let isDragging = false;
-            let startY, startHeight;
+            // --- Drag Panel Logic ---
+            let isDragging = false, startY, startHeight;
 
             const onDragStart = (clientY) => {
                 isDragging = true;
@@ -386,30 +458,22 @@
                 startHeight = mainContent.offsetHeight;
                 mainContent.style.transition = 'none';
             };
-
             const onDragMove = (clientY) => {
                 if (!isDragging) return;
                 const diffY = startY - clientY;
                 let newHeight = startHeight + diffY;
-                
-                const minHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-collapsed-height'));
-                const maxHeight = window.innerHeight - 50;
-
-                if (newHeight < minHeight) newHeight = minHeight;
-                if (newHeight > maxHeight) newHeight = maxHeight;
-
+                const minH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-collapsed-height'));
+                const maxH = window.innerHeight - 50;
+                if (newHeight < minH) newHeight = minH;
+                if (newHeight > maxH) newHeight = maxH;
                 mainContent.style.height = `${newHeight}px`;
             };
-
             const onDragEnd = () => {
                 if (!isDragging) return;
                 isDragging = false;
                 mainContent.style.transition = 'height 0.3s ease-out';
                 const currentHeight = mainContent.offsetHeight;
-                
-                // Si on a dépassé la moitié de la hauteur "minimale + un peu", on maximise. Sinon, on minimise.
-                const threshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-collapsed-height')) + 100;
-
+                const threshold = window.innerHeight * 0.4;
                 if (currentHeight > threshold) {
                     mainContent.style.height = 'var(--panel-expanded-height)';
                     mainContent.classList.add('expanded');
@@ -419,11 +483,9 @@
                 }
             };
 
-            // Événements pour le tactile ET la souris
             panelHeader.addEventListener('touchstart', (e) => onDragStart(e.touches[0].clientY), { passive: true });
             document.addEventListener('touchmove', (e) => onDragMove(e.touches[0].clientY));
             document.addEventListener('touchend', onDragEnd);
-
             panelHeader.addEventListener('mousedown', (e) => onDragStart(e.clientY));
             document.addEventListener('mousemove', (e) => onDragMove(e.clientY));
             document.addEventListener('mouseup', onDragEnd);
@@ -431,3 +493,4 @@
     </script>
 </body>
 </html>
+
