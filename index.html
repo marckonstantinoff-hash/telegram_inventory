@@ -402,7 +402,7 @@
                 };
             };
             
-            html5QrcodeScanner = new Html5Qrcode("reader", { formatsToSupport: [0] });
+            html5QrcodeScanner = new Html5Qrcode("reader");
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: qrboxFunction }, onScanSuccess)
             .catch(err => {
                 console.error("Scanner start failed", err);
