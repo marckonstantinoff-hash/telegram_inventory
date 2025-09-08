@@ -62,13 +62,24 @@
             height: 20vh;
             max-height: 150px;
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            border-radius: 12px;
             pointer-events: none;
-            transition: border-color 0.3s;
         }
 
-        #scanner-overlay.paused {
+        /* NOUVEAU DESIGN DES COINS */
+        .scanner-corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 5px solid rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+            transition: border-color 0.3s;
+        }
+        .scanner-corner.top-left { top: -5px; left: -5px; border-right: none; border-bottom: none; }
+        .scanner-corner.top-right { top: -5px; right: -5px; border-left: none; border-bottom: none; }
+        .scanner-corner.bottom-left { bottom: -5px; left: -5px; border-right: none; border-top: none; }
+        .scanner-corner.bottom-right { bottom: -5px; right: -5px; border-left: none; border-top: none; }
+        
+        #scanner-overlay.paused .scanner-corner {
             border-color: var(--success-color);
         }
 
@@ -77,16 +88,17 @@
             top: 50%;
             left: 5%;
             width: 90%;
-            height: 2px;
-            background-color: var(--scanner-laser-color);
+            height: 3px;
+            /* NOUVEAU DESIGN DU LASER */
+            background: linear-gradient(to right, transparent, var(--scanner-laser-color), transparent);
             box-shadow: 0 0 5px var(--scanner-laser-color);
             animation: scanning 2s infinite ease-in-out;
-            border-radius: 1px;
+            border-radius: 1.5px;
         }
 
         #scanner-overlay.paused #scanner-laser {
             animation: none;
-            background-color: var(--success-color);
+            background: linear-gradient(to right, transparent, var(--success-color), transparent);
         }
 
         @keyframes scanning {
@@ -222,6 +234,11 @@
     <div id="camera-container">
         <div id="reader"></div>
         <div id="scanner-overlay">
+            <!-- NOUVEAUX MARQUEURS DE COINS -->
+            <div class="scanner-corner top-left"></div>
+            <div class="scanner-corner top-right"></div>
+            <div class="scanner-corner bottom-left"></div>
+            <div class="scanner-corner bottom-right"></div>
             <div id="scanner-laser"></div>
         </div>
     </div>
@@ -346,7 +363,8 @@
             const onScanSuccess = (decodedText, decodedResult) => {
                 if (isProcessingScan) return;
                 isProcessingScan = true;
-                html5QrcodeScanner.pause(true);
+                // CORRECTION : On utilise pause() sans argument pour ne pas couper le flux vidéo.
+                html5QrcodeScanner.pause(); 
                 scannedBarcodeInput.value = decodedText;
                 quantityInput.disabled = false;
                 quantityInput.value = "1";
@@ -367,7 +385,7 @@
                 };
             };
             
-            html5QrcodeScanner = new Html5Qrcode("reader", { formatsToSupport: [0] }); // 0 for all barcode formats
+            html5QrcodeScanner = new Html5Qrcode("reader", { formatsToSupport: [0] });
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: qrboxFunction }, onScanSuccess)
             .catch(err => {
                 console.error("Scanner start failed", err);
@@ -394,7 +412,8 @@
                 quantityInput.disabled = true;
                 addItemButton.style.display = 'none';
                 scannerOverlay.classList.remove('paused');
-                if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // PAUSED
+                // La reprise du scan est plus fiable ainsi
+                if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // 2 = PAUSED
                     html5QrcodeScanner.resume();
                 }
                 isProcessingScan = false;
