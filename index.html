@@ -17,150 +17,113 @@
       --tg-theme-button-color: #3390ec;
       --tg-theme-button-text-color: #ffffff;
       --tg-theme-secondary-bg-color: #f4f4f5;
-      --scanner-laser-color: #ff3b30;
       --success-color: #34c759;
       --handle-color: #c7c7cc;
-
-      --panel-collapsed-height: 100px;
+      --panel-collapsed-height: 120px;
       --panel-expanded-height: 85vh;
     }
     body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--tg-theme-bg-color);
+      margin: 0; padding: 0;
+      width: 100%; height: 100vh;
+      font-family: sans-serif;
+      background: var(--tg-theme-bg-color);
       color: var(--tg-theme-text-color);
-      display: flex;
-      flex-direction: column;
       overflow: hidden;
     }
     #camera-container {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background-color: #000;
+      background: #000;
     }
     #reader {
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       object-fit: cover;
-      border: none;
     }
-    #scanner-status {
-      position: absolute;
-      top: 20px; left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0,0,0,0.7);
-      color: white;
-      padding: 5px 15px;
-      border-radius: 15px;
-      font-size: 14px;
-      z-index: 5;
-      display: none;
-    }
+    /* Simplified scan overlay */
     #scanner-overlay {
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 90vw; max-width: 450px;
-      height: 20vh; max-height: 150px;
-      box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
+      width: 80vw; max-width: 400px;
+      height: 25vh; max-height: 200px;
+      border: 3px solid rgba(255,255,255,0.8);
+      border-radius: 10px;
+      box-sizing: border-box;
       pointer-events: none;
     }
-    .scanner-corner {
+    #scanner-status {
       position: absolute;
-      width: 30px; height: 30px;
-      border: 5px solid rgba(255,255,255,0.8);
-      border-radius: 5px;
-    }
-    .scanner-corner.top-left { top: -5px; left: -5px; border-right: none; border-bottom: none; }
-    .scanner-corner.top-right { top: -5px; right: -5px; border-left: none; border-bottom: none; }
-    .scanner-corner.bottom-left { bottom: -5px; left: -5px; border-right: none; border-top: none; }
-    .scanner-corner.bottom-right { bottom: -5px; right: -5px; border-left: none; border-top: none; }
-    #scanner-overlay.paused .scanner-corner { border-color: var(--success-color); }
-    #scanner-laser {
-      position: absolute;
-      top: 50%; left: 5%;
-      width: 90%; height: 3px;
-      background: linear-gradient(to right, transparent, var(--scanner-laser-color), transparent);
-      box-shadow: 0 0 5px var(--scanner-laser-color);
-      animation: scanning 2s infinite ease-in-out;
-      border-radius: 1.5px;
-    }
-    #scanner-overlay.paused #scanner-laser {
-      animation: none;
-      background: linear-gradient(to right, transparent, var(--success-color), transparent);
-    }
-    @keyframes scanning {
-      0%,100% { transform: translateY(-30px); opacity: .5; }
-      50% { transform: translateY(30px); opacity: 1; }
+      top: 15px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 5px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
     }
 
     /* --- Panel inventaire --- */
     #main-content {
-      display: flex; flex-direction: column;
-      background-color: var(--tg-theme-secondary-bg-color);
+      background: var(--tg-theme-secondary-bg-color);
       border-top-left-radius: 20px;
       border-top-right-radius: 20px;
-      position: fixed; bottom: 0; left: 0; right: 0;
-      padding: 0 15px 15px 15px;
-      box-sizing: border-box;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding: 10px 15px;
       box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
       z-index: 10;
       height: var(--panel-collapsed-height);
-      transition: height .3s ease-out;
+      transition: height .3s;
+      display: flex; flex-direction: column;
     }
-    #panel-header { padding: 10px 0; cursor: grab; text-align: center; }
+    #panel-header { cursor: grab; text-align: center; }
     #drag-handle {
       width: 50px; height: 5px;
-      background-color: var(--handle-color);
+      background: var(--handle-color);
       border-radius: 2.5px;
       margin: 0 auto 10px;
     }
     #scan-result-container {
       display: flex; gap: 10px; align-items: center;
     }
-    #scan-result-container input, #scan-result-container button {
+    #scan-result-container input {
       padding: 10px; border: 1px solid var(--handle-color);
       border-radius: 8px; font-size: 16px;
+      background: var(--tg-theme-bg-color);
+      color: var(--tg-theme-text-color);
     }
-    #scanned-barcode { flex-grow: 1; text-align: center; }
-    #quantity-input { width: 60px; text-align: center; }
+    #scanned-barcode { flex: 1; text-align: center; }
+    #quantity-input { width: 70px; text-align: center; }
     #add-item-button {
-      background-color: var(--success-color);
-      color: white; font-weight: bold;
-      border: none; cursor: pointer;
+      background: var(--success-color);
+      color: #fff; font-weight: bold;
+      border: none; border-radius: 8px;
       padding: 10px 15px;
+      flex-shrink: 0;
       display: none;
     }
-    #panel-body { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; opacity: 0; transition: opacity .2s; }
+
+    #panel-body { flex: 1; overflow: hidden; opacity: 0; transition: opacity .2s; }
     #main-content.expanded #panel-body { opacity: 1; }
-    #inventory-table-container { flex-grow: 1; overflow-y: auto; border: 1px solid #e5e5e5; border-radius: 8px; margin-top: 15px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px; border-bottom: 1px solid #e5e5e5; }
-    th { background-color: var(--tg-theme-bg-color); position: sticky; top: 0; }
-    td input[type="number"] { width: 60px; text-align: center; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border-bottom: 1px solid #ddd; }
+    th { background: var(--tg-theme-bg-color); position: sticky; top: 0; }
     .delete-btn { background: #ff3b30; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; }
-    #action-buttons { display: flex; gap: 10px; margin-top: 15px; }
-    #action-buttons button { flex-grow: 1; padding: 12px; font-size: 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; }
-    #send-button { background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
-    #clear-button { background-color: #ff9500; color: white; }
-    #settings-button { background-color: #8e8e93; color: white; }
+    #action-buttons { display: flex; gap: 10px; margin-top: 10px; }
+    #action-buttons button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: bold; }
+    #send-button { background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
+    #clear-button { background: #ff9500; color: white; }
+    #settings-button { background: #8e8e93; color: white; }
   </style>
 </head>
 <body>
   <div id="camera-container">
     <div id="reader"></div>
     <div id="scanner-status">Scan en pause</div>
-    <div id="scanner-overlay">
-      <div class="scanner-corner top-left"></div>
-      <div class="scanner-corner top-right"></div>
-      <div class="scanner-corner bottom-left"></div>
-      <div class="scanner-corner bottom-right"></div>
-      <div id="scanner-laser"></div>
-    </div>
+    <div id="scanner-overlay"></div>
   </div>
 
   <div id="main-content">
@@ -173,12 +136,10 @@
       </div>
     </div>
     <div id="panel-body">
-      <div id="inventory-table-container">
-        <table>
-          <thead><tr><th>Code-Barres</th><th>Qté</th><th></th></tr></thead>
-          <tbody id="inventory-tbody"></tbody>
-        </table>
-      </div>
+      <table>
+        <thead><tr><th>Code-Barres</th><th>Qté</th><th></th></tr></thead>
+        <tbody id="inventory-tbody"></tbody>
+      </table>
       <div id="action-buttons">
         <button id="settings-button">⚙️ Paramètres</button>
         <button id="clear-button">Vider</button>
@@ -194,8 +155,7 @@
 
     let inventoryData = [];
     let isProcessingScan = false;
-
-    const scannerOverlay = document.getElementById('scanner-overlay');
+    const overlay = document.getElementById('scanner-overlay');
     const scannerStatus = document.getElementById('scanner-status');
     const scannedBarcodeInput = document.getElementById('scanned-barcode');
     const quantityInput = document.getElementById('quantity-input');
@@ -209,22 +169,20 @@
       quantityInput.disabled = false;
       quantityInput.value = "1";
       addItemButton.style.display = 'block';
-      scannerOverlay.classList.add('paused');
+      overlay.style.borderColor = "var(--success-color)";
       scannerStatus.style.display = 'block';
       try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     }
-
     function resetScanUI() {
       scannedBarcodeInput.value = '';
       scannedBarcodeInput.placeholder = 'En attente de scan...';
       quantityInput.value = '';
       quantityInput.disabled = true;
       addItemButton.style.display = 'none';
-      scannerOverlay.classList.remove('paused');
+      overlay.style.borderColor = "rgba(255,255,255,0.8)";
       scannerStatus.style.display = 'none';
       isProcessingScan = false;
     }
-
     function addItem() {
       const code = scannedBarcodeInput.value;
       const qty = parseInt(quantityInput.value, 10);
@@ -249,9 +207,9 @@
       });
     }
 
-    // --- QuaggaJS (codes-barres 1D) ---
+    // --- QuaggaJS (codes-barres 1D + QR support) ---
     function startQuagga() {
-      const rect = scannerOverlay.getBoundingClientRect();
+      const rect = overlay.getBoundingClientRect();
       Quagga.init({
         inputStream: {
           type: "LiveStream",
@@ -264,7 +222,7 @@
             bottom: (100 - (rect.bottom / window.innerHeight) * 100) + "%"
           }
         },
-        decoder: { readers: ["code_128_reader"] },
+        decoder: { readers: ["code_128_reader","ean_reader","ean_8_reader","qr_reader"] },
         locate: true
       }, err => {
         if (err) { console.error(err); return; }
@@ -276,17 +234,7 @@
         }
       });
     }
-
-    // --- html5-qrcode (QR codes) ---
-    function startHtml5QrCode() {
-      const qrScanner = new Html5Qrcode("reader");
-      qrScanner.start({ facingMode:"environment" }, { fps:10 },
-        txt => handleDetectedCode(txt)
-      ).catch(err => console.error("QR start failed", err));
-    }
-
     startQuagga();
-    startHtml5QrCode();
   });
   </script>
 </body>
